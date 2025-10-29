@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Animation Generator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 1.8rem;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .input, .textarea {
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input:focus, .textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 150px;
+            border: 2px dashed #e1e5e9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        .placeholder-text {
+            color: #666;
+            font-style: italic;
+        }
+
+        .example-text {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 600px;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .background-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.7;
+            z-index: 1;
+        }
+
+        .characters-container {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            gap: 40px;
+        }
+
+        .character-container {
+            position: relative;
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .character-svg {
+            width: 110px;
+            height: 140px;
+            transition: filter 0.3s ease;
+        }
+
+        .character-svg.active {
+            filter: drop-shadow(0 0 10px #ffd700);
+        }
+
+        /* Mouth animation is controlled via JS heuristics during speech */
+
+        .dialogue-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            max-width: 80%;
+            text-align: center;
+            z-index: 3;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .speaker-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ffd700;
+        }
+
+        .dialogue-text {
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 10px;
+            }
+            
+            .header {
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+            }
+            
+            .main-content {
+                max-width: 100%;
+            }
+            
+            .canvas-container {
+                height: 500px;
+            }
+            
+            .character-svg {
+                width: 90px;
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function StickmanCharacter({ id, x, y, facing = 'front', isActive = false, mouthD = 'M 15 34 L 25 34' }) {
+
+            const getFacingTransform = () => {
+                switch (facing) {
+                    case 'left':
+                        return 'scaleX(-1)';
+                    case 'right':
+                        return 'scaleX(1)';
+                    case 'front':
+                    default:
+                        return 'scaleX(1)';
+                }
+            };
+
+            return React.createElement('div', {
+                className: 'character-container'
+            }, React.createElement('svg', {
+                className: `character-svg ${isActive ? 'active' : ''}`,
+                viewBox: '0 0 40 80',
+                style: { transform: getFacingTransform() }
+            }, [
+                // Head with glasses and hair
+                React.createElement('circle', { key: 'head', cx: '20', cy: '16', r: '17', fill: 'none', stroke: '#000', strokeWidth: '2.5' }),
+                React.createElement('path', { key: 'hair', d: 'M 15 6 L 18 3 M 18 5 L 21 2 M 21 6 L 24 3', stroke: '#000', strokeWidth: '2.5', fill: 'none', strokeLinecap: 'round' }),
+                React.createElement('circle', { key: 'earL', cx: '9', cy: '16', r: '0.8', fill: '#000' }),
+                React.createElement('circle', { key: 'earR', cx: '31', cy: '16', r: '0.8', fill: '#000' }),
+                React.createElement('circle', { key: 'gL', cx: '13', cy: '14', r: '6.5', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                React.createElement('circle', { key: 'gR', cx: '27', cy: '14', r: '6.5', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                React.createElement('line', { key: 'bridge', x1: '19.5', y1: '14', x2: '20.5', y2: '14', stroke: '#000', strokeWidth: '1.4' }),
+                React.createElement('circle', { key: 'eye1', cx: '13', cy: '14', r: '2.2', fill: '#fff' }),
+                React.createElement('circle', { key: 'eye2', cx: '27', cy: '14', r: '2.2', fill: '#fff' }),
+                React.createElement('circle', { key: 'p1', cx: '12.6', cy: '14.2', r: '1.1', fill: '#000' }),
+                React.createElement('circle', { key: 'p2', cx: '26.4', cy: '14.2', r: '1.1', fill: '#000' }),
+                // Mouth (lower under glasses)
+                React.createElement('path', { key: 'mouth', d: mouthD, stroke: '#000', strokeWidth: '2.5', fill: 'none', strokeLinecap: 'round', className: 'mouth' }),
+                // Neck and body
+                React.createElement('line', { key: 'neck', x1: '20', y1: '22', x2: '20', y2: '24', stroke: '#000', strokeWidth: '2.5' }),
+                React.createElement('line', { key: 'body', x1: '20', y1: '24', x2: '20', y2: '60', stroke: '#000', strokeWidth: '2.5' }),
+                // Curved arms and oval hands
+                React.createElement('path', { key: 'armL', d: 'M 20 30 Q 16 40 16 50', stroke: '#000', strokeWidth: '2.5', fill: 'none' }),
+                React.createElement('path', { key: 'armR', d: 'M 20 30 Q 24 40 24 50', stroke: '#000', strokeWidth: '2.5', fill: 'none' }),
+                React.createElement('ellipse', { key: 'handL', cx: '16', cy: '52', rx: '1.8', ry: '3', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                React.createElement('ellipse', { key: 'handR', cx: '24', cy: '52', rx: '1.8', ry: '3', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                // Legs and feet
+                React.createElement('line', { key: 'leg1', x1: '20', y1: '60', x2: '20', y2: '76', stroke: '#000', strokeWidth: '2.5' }),
+                React.createElement('line', { key: 'leg2', x1: '20', y1: '60', x2: '27', y2: '76', stroke: '#000', strokeWidth: '2.5' }),
+                React.createElement('ellipse', { key: 'footL', cx: '20', cy: '78', rx: '4', ry: '1.4', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                React.createElement('ellipse', { key: 'footR', cx: '27', cy: '78', rx: '4', ry: '1.4', fill: 'none', stroke: '#000', strokeWidth: '1.6' }),
+                // No label for cleaner style
+            ]));
+        }
+
+        function AnimationCanvas({ backgroundImage, sceneDescription, currentSpeaker, animationStep, script, onExport, mouthShape }) {
+            const [currentDialogue, setCurrentDialogue] = useState('');
+            const [currentSpeakerName, setCurrentSpeakerName] = useState('');
+
+            useEffect(() => {
+                if (script && animationStep >= 0) {
+                    const scriptLines = script.split('\n').filter(line => line.trim());
+                    const currentLine = scriptLines[animationStep];
+                    
+                    if (currentLine) {
+                        const speakerMatch = currentLine.match(/^(person1|person2):\s*(.+)/i);
+                        if (speakerMatch) {
+                            const [, speaker, dialogue] = speakerMatch;
+                            setCurrentSpeakerName(speaker);
+                            setCurrentDialogue(dialogue);
+                        }
+                    }
+                }
+            }, [script, animationStep]);
+
+            const getCharacterPositions = () => {
+                const description = sceneDescription.toLowerCase();
+                
+                if (description.includes('face to face') || description.includes('standing')) {
+                    return {
+                        person1: { x: 40, y: 50, facing: 'right' },
+                        person2: { x: 60, y: 50, facing: 'left' }
+                    };
+                } else if (description.includes('sitting') && description.includes('behind')) {
+                    return {
+                        person1: { x: 40, y: 60, facing: 'right' },
+                        person2: { x: 60, y: 60, facing: 'left' }
+                    };
+                } else if (description.includes('side by side')) {
+                    return {
+                        person1: { x: 40, y: 50, facing: 'front' },
+                        person2: { x: 60, y: 50, facing: 'front' }
+                    };
+                } else {
+                    return {
+                        person1: { x: 40, y: 50, facing: 'right' },
+                        person2: { x: 60, y: 50, facing: 'left' }
+                    };
+                }
+            };
+
+            const positions = getCharacterPositions();
+
+            return React.createElement('div', { className: 'canvas-container' }, [
+                backgroundImage && React.createElement('div', {
+                    key: 'background',
+                    className: 'background-image',
+                    style: { backgroundImage: `url(${backgroundImage})` }
+                }),
+                React.createElement('div', {
+                    key: 'characters',
+                    className: 'characters-container'
+                }, [
+                    React.createElement(StickmanCharacter, {
+                        key: 'person1',
+                        id: 'person1',
+                        x: 30,
+                        y: 50,
+                        facing: positions.person1.facing,
+                        isActive: currentSpeaker === 'person1',
+                        mouthD: currentSpeaker === 'person1' ? mouthShape : 'M 15 20 L 25 20'
+                    }),
+                    React.createElement(StickmanCharacter, {
+                        key: 'person2',
+                        id: 'person2',
+                        x: 70,
+                        y: 50,
+                        facing: positions.person2.facing,
+                        isActive: currentSpeaker === 'person2',
+                        mouthD: currentSpeaker === 'person2' ? mouthShape : 'M 15 20 L 25 20'
+                    })
+                ]),
+                currentDialogue && React.createElement('div', {
+                    key: 'dialogue',
+                    className: 'dialogue-box'
+                }, [
+                    React.createElement('div', {
+                        key: 'speaker',
+                        className: 'speaker-label'
+                    }, currentSpeakerName),
+                    React.createElement('div', {
+                        key: 'text',
+                        className: 'dialogue-text'
+                    }, currentDialogue)
+                ]),
+                React.createElement('div', { key: 'export', style: { position: 'absolute', top: '12px', right: '12px', zIndex: 4 } },
+                    React.createElement('button', { className: 'button', style: { padding: '10px 14px', width: 'auto' }, onClick: onExport }, 'Export PNG (1080x1920)')
+                )
+            ]);
+        }
+
+        function InputPanel({ backgroundImage, setBackgroundImage, script, setScript, sceneDescription, setSceneDescription, onGenerate, isAnimating, isAudioEnabled, setIsAudioEnabled, voices, selectedVoice, setSelectedVoice, rate, setRate, pitch, setPitch }) {
+            const handleImageChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setBackgroundImage(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            return React.createElement('div', { className: 'panel' }, [
+                React.createElement('div', { key: 'image-section', className: 'section' }, [
+                    React.createElement('label', { key: 'label', className: 'label', htmlFor: 'background' }, 'Background Image'),
+                    React.createElement('input', {
+                        key: 'input',
+                        id: 'background',
+                        type: 'file',
+                        accept: 'image/*',
+                        onChange: handleImageChange,
+                        className: 'input'
+                    }),
+                    React.createElement('div', { key: 'preview', className: 'image-preview' },
+                        backgroundImage ? React.createElement('img', { src: backgroundImage, alt: 'Background preview' }) : React.createElement('span', { className: 'placeholder-text' }, 'No image selected')
+                    )
+                ]),
+                React.createElement('div', { key: 'script-section', className: 'section' }, [
+                    React.createElement('label', { key: 'label', className: 'label', htmlFor: 'script' }, 'Conversation Script'),
+                    React.createElement('textarea', {
+                        key: 'textarea',
+                        id: 'script',
+                        value: script,
+                        onChange: (e) => setScript(e.target.value),
+                        placeholder: 'Enter your conversation script here...',
+                        className: 'textarea'
+                    }),
+                    React.createElement('div', { key: 'example', className: 'example-text' }, [
+                        'Example format:',
+                        React.createElement('br', { key: 'br1' }),
+                        'person1: Hello, how are you?',
+                        React.createElement('br', { key: 'br2' }),
+                        'person2: I\'m doing great, thanks!',
+                        React.createElement('br', { key: 'br3' }),
+                        'person1: That\'s wonderful to hear.'
+                    ])
+                ]),
+                React.createElement('div', { key: 'scene-section', className: 'section' }, [
+                    React.createElement('label', { key: 'label', className: 'label', htmlFor: 'scene' }, 'Scene Description'),
+                    React.createElement('textarea', {
+                        key: 'textarea',
+                        id: 'scene',
+                        value: sceneDescription,
+                        onChange: (e) => setSceneDescription(e.target.value),
+                        placeholder: 'Describe the scene setup...',
+                        className: 'textarea'
+                    }),
+                    React.createElement('div', { key: 'example', className: 'example-text' }, 'Example: Two people standing face to face in a park, or two people sitting behind a desk')
+                ]),
+                React.createElement('div', { key: 'tts', className: 'section' }, [
+                    React.createElement('label', { key: 'tts-label', className: 'label' }, 'Text-to-Speech (Online)'),
+                    React.createElement('div', { key: 'row1', style: { display: 'flex', gap: '10px' } }, [
+                        React.createElement('select', {
+                            key: 'voice',
+                            className: 'input',
+                            value: selectedVoice || '',
+                            onChange: (e) => setSelectedVoice(e.target.value),
+                            style: { flex: 1 }
+                        }, [
+                            React.createElement('option', { key: 'none', value: '' }, 'Default Voice'),
+                            ...voices.map(v => React.createElement('option', { key: v.name + v.lang, value: v.name }, `${v.name} (${v.lang})`))
+                        ])
+                    ]),
+                    React.createElement('div', { key: 'row2', style: { display: 'flex', gap: '10px', alignItems: 'center' } }, [
+                        React.createElement('label', { key: 'rate-label', style: { width: '60px' } }, 'Rate'),
+                        React.createElement('input', { key: 'rate', type: 'range', min: '0.5', max: '1.5', step: '0.1', value: rate, onChange: (e) => setRate(parseFloat(e.target.value)), style: { flex: 1 } }),
+                        React.createElement('span', { key: 'rate-val', style: { width: '40px', textAlign: 'right' } }, rate.toFixed(1))
+                    ]),
+                    React.createElement('div', { key: 'row3', style: { display: 'flex', gap: '10px', alignItems: 'center' } }, [
+                        React.createElement('label', { key: 'pitch-label', style: { width: '60px' } }, 'Pitch'),
+                        React.createElement('input', { key: 'pitch', type: 'range', min: '0.5', max: '2', step: '0.1', value: pitch, onChange: (e) => setPitch(parseFloat(e.target.value)), style: { flex: 1 } }),
+                        React.createElement('span', { key: 'pitch-val', style: { width: '40px', textAlign: 'right' } }, pitch.toFixed(1))
+                    ])
+                ]),
+                React.createElement('div', { key: 'audio-toggle', className: 'section' }, [
+                    React.createElement('label', { key: 'audio-label', className: 'label', htmlFor: 'audio-toggle' }, 'Audio Settings'),
+                    React.createElement('div', { key: 'audio-controls', style: { display: 'flex', alignItems: 'center', gap: '10px' } }, [
+                        React.createElement('input', {
+                            key: 'audio-checkbox',
+                            id: 'audio-toggle',
+                            type: 'checkbox',
+                            checked: isAudioEnabled,
+                            onChange: (e) => setIsAudioEnabled(e.target.checked),
+                            style: { width: '20px', height: '20px' }
+                        }),
+                        React.createElement('span', { key: 'audio-text' }, 'Enable Text-to-Speech')
+                    ])
+                ]),
+                React.createElement('button', {
+                    key: 'button',
+                    onClick: onGenerate,
+                    disabled: isAnimating,
+                    className: 'button'
+                }, isAnimating ? 'Animating...' : 'Generate Animation')
+            ]);
+        }
+
+        function App() {
+            const [backgroundImage, setBackgroundImage] = useState(null);
+            const [script, setScript] = useState('');
+            const [sceneDescription, setSceneDescription] = useState('');
+            const [isAnimating, setIsAnimating] = useState(false);
+            const [currentSpeaker, setCurrentSpeaker] = useState(null);
+            const [animationStep, setAnimationStep] = useState(0);
+            const [lastPositions, setLastPositions] = useState({ person1: { facing: 'right' }, person2: { facing: 'left' } });
+            const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+            const [voices, setVoices] = useState([]);
+            const [selectedVoice, setSelectedVoice] = useState('');
+            const [rate, setRate] = useState(1);
+            const [pitch, setPitch] = useState(1);
+            const [mouthShape, setMouthShape] = useState('M 15 34 L 25 34');
+
+            // Load voices
+            useEffect(() => {
+                const load = () => setVoices(window.speechSynthesis.getVoices());
+                load();
+                window.speechSynthesis.onvoiceschanged = load;
+            }, []);
+
+            // Web Speech API speak
+            const speakText = (text) => {
+                if (!isAudioEnabled || !('speechSynthesis' in window)) return Promise.resolve();
+                return new Promise((resolve) => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.rate = rate;
+                    utter.pitch = pitch;
+                    // Assign selected voice if available
+                    if (selectedVoice) {
+                        const v = voices.find(v => v.name === selectedVoice);
+                        if (v) utter.voice = v;
+                    }
+                    // Heuristic mouth animation timer
+                    const timer = setInterval(() => {
+                        const open = Math.random() > 0.4;
+                        const curve = open ? 8 + Math.random() * 6 : 0;
+                        const d = curve > 0 ? `M 15 34 Q 20 ${34 + curve} 25 34` : 'M 15 34 L 25 34';
+                        setMouthShape(d);
+                    }, 90);
+                    utter.onend = () => {
+                        clearInterval(timer);
+                        setMouthShape('M 15 34 L 25 34');
+                        resolve();
+                    };
+                    utter.onerror = () => {
+                        clearInterval(timer);
+                        setMouthShape('M 15 34 L 25 34');
+                        resolve();
+                    };
+                    window.speechSynthesis.speak(utter);
+                });
+            };
+
+            const handleGenerateAnimation = async () => {
+                if (!script || !sceneDescription) {
+                    alert('Please provide both script and scene description');
+                    return;
+                }
+                
+                setIsAnimating(true);
+                setAnimationStep(0);
+                
+                const scriptLines = script.split('\n').filter(line => line.trim());
+                for (let i = 0; i < scriptLines.length; i++) {
+                    const line = scriptLines[i];
+                    const m = line.match(/^(person1|person2):\s*(.+)/i);
+                    if (!m) continue;
+                    const [, speaker, dialogue] = m;
+                    setCurrentSpeaker(speaker);
+                    setAnimationStep(i);
+                    await speakText(dialogue);
+                }
+                setIsAnimating(false);
+                setCurrentSpeaker(null);
+            };
+
+            const exportPNG = async () => {
+                const width = 1080;
+                const height = 1920;
+                const svgParts = [];
+                svgParts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`);
+                // Background
+                if (backgroundImage) {
+                    svgParts.push(`<defs><clipPath id="clip"><rect width="${width}" height="${height}"/></clipPath></defs>`);
+                    svgParts.push(`<image href="${backgroundImage}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip)" opacity="0.7"/>`);
+                } else {
+                    svgParts.push(`<rect width="${width}" height="${height}" fill="#f8f9fa"/>`);
+                }
+
+                // Helper to render a character at x% horizontal
+                const renderStick = (id, xPct, facing) => {
+                    const centerX = (xPct / 100) * width;
+                    const centerY = height * 0.55;
+                    const flip = facing === 'left' ? -1 : 1;
+                    return `
+                    <g transform="translate(${centerX},${centerY}) scale(${flip},1) translate(-20,-40)">
+                        <circle cx="20" cy="16" r="17" fill="none" stroke="#000" stroke-width="2.5" />
+                        <path d="M 15 6 L 18 3 M 18 5 L 21 2 M 21 6 L 24 3" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                        <circle cx="9" cy="16" r="0.8" fill="#000" />
+                        <circle cx="31" cy="16" r="0.8" fill="#000" />
+                        <circle cx="13" cy="14" r="6.5" fill="none" stroke="#000" stroke-width="1.6" />
+                        <circle cx="27" cy="14" r="6.5" fill="none" stroke="#000" stroke-width="1.6" />
+                        <line x1="19.5" y1="14" x2="20.5" y2="14" stroke="#000" stroke-width="1.4" />
+                        <circle cx="13" cy="14" r="2.2" fill="#fff" />
+                        <circle cx="27" cy="14" r="2.2" fill="#fff" />
+                        <circle cx="12.6" cy="14.2" r="1.1" fill="#000" />
+                        <circle cx="26.4" cy="14.2" r="1.1" fill="#000" />
+                        <path d="M 15 20 L 25 20" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                        <line x1="20" y1="22" x2="20" y2="24" stroke="#000" stroke-width="2.5" />
+                        <line x1="20" y1="24" x2="20" y2="60" stroke="#000" stroke-width="2.5" />
+                        <path d="M 20 30 Q 16 40 16 50" stroke="#000" stroke-width="2.5" fill="none" />
+                        <path d="M 20 30 Q 24 40 24 50" stroke="#000" stroke-width="2.5" fill="none" />
+                        <ellipse cx="16" cy="52" rx="1.8" ry="3" fill="none" stroke="#000" stroke-width="1.6" />
+                        <ellipse cx="24" cy="52" rx="1.8" ry="3" fill="none" stroke="#000" stroke-width="1.6" />
+                        <line x1="20" y1="60" x2="20" y2="76" stroke="#000" stroke-width="2.5" />
+                        <line x1="20" y1="60" x2="27" y2="76" stroke="#000" stroke-width="2.5" />
+                        <ellipse cx="20" cy="78" rx="4" ry="1.4" fill="none" stroke="#000" stroke-width="1.6" />
+                        <ellipse cx="27" cy="78" rx="4" ry="1.4" fill="none" stroke="#000" stroke-width="1.6" />
+                    </g>`;
+                };
+
+                svgParts.push(renderStick('person1', 35, 'right'));
+                svgParts.push(renderStick('person2', 65, 'left'));
+                svgParts.push('</svg>');
+                const svgString = svgParts.join('');
+
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                await new Promise((resolve) => {
+                    img.onload = () => resolve();
+                    img.src = url;
+                });
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                const png = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = png;
+                a.download = 'stickman-vertical-1080x1920.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+
+            return React.createElement('div', { className: 'app-container' }, [
+                React.createElement('h1', { key: 'header', className: 'header' }, '🎭 Stickman Animation Generator'),
+                React.createElement('div', { key: 'main-content', className: 'main-content' }, [
+                    React.createElement('div', { key: 'left-panel', className: 'panel' },
+                        React.createElement(InputPanel, {
+                            backgroundImage,
+                            setBackgroundImage,
+                            script,
+                            setScript,
+                            sceneDescription,
+                            setSceneDescription,
+                            onGenerate: handleGenerateAnimation,
+                            isAnimating,
+                            isAudioEnabled,
+                            setIsAudioEnabled,
+                            voices,
+                            selectedVoice,
+                            setSelectedVoice,
+                            rate,
+                            setRate,
+                            pitch,
+                            setPitch
+                        })
+                    ),
+                    React.createElement('div', { key: 'right-panel', className: 'panel' },
+                        React.createElement(AnimationCanvas, {
+                            backgroundImage,
+                            sceneDescription,
+                            currentSpeaker,
+                            animationStep,
+                            script,
+                            onExport: exportPNG,
+                            mouthShape
+                        })
+                    )
+                ])
+            ]);
+        }
+
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>
