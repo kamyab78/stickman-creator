@@ -168,7 +168,11 @@ function InputPanel({
           placeholder="Describe the scene setup..."
         />
         <ExampleText>
-          Example: Two people standing face to face in a park, or two people sitting behind a desk
+          Examples:<br/>
+          • "Two people standing face to face"<br/>
+          • "person1 chasing person2" (both will run)<br/>
+          • "person1 laughing in dialog1" (person1 laughs when speaking)<br/>
+          • "Two people sitting on chairs"
         </ExampleText>
       </Section>
 

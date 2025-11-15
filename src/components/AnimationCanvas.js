@@ -91,9 +91,53 @@ const AnimationCanvas = forwardRef(({
     }
   }, [script, animationStep]);
 
+  // Parse scene description and script to determine animation states
+  const getAnimationState = (characterId) => {
+    const description = (sceneDescription || '').toLowerCase();
+    const scriptText = (script || '').toLowerCase();
+    
+    // Check scene description for specific character laughing (e.g., "person1 laughing in dialog1")
+    if (description.includes(`${characterId} laughing`) || 
+        description.includes(`${characterId} laugh`)) {
+      // Only apply laughing when this character is speaking
+      if (currentSpeaker === characterId) {
+        return 'laughing';
+      }
+    }
+    
+    // Check current dialogue for laughing
+    if (currentDialogue && currentSpeaker === characterId) {
+      const dialogueLower = currentDialogue.toLowerCase();
+      if (dialogueLower.includes('laugh') || dialogueLower.includes('haha') || 
+          dialogueLower.includes('hehe')) {
+        return 'laughing';
+      }
+    }
+    
+    // Check scene description for chasing/running keywords
+    if (description.includes('chasing') || description.includes('chase') || 
+        description.includes('running') || description.includes('run')) {
+      // If it mentions person1 chasing person2, both are running
+      if ((description.includes('person1') && description.includes('chasing')) ||
+          (description.includes('person2') && description.includes('chasing')) ||
+          description.includes('chasing') || description.includes('running')) {
+        return 'running';
+      }
+    }
+    
+    // Check for sitting (but not if running takes priority)
+    const isRunning = description.includes('chasing') || description.includes('running');
+    if (!isRunning && (description.includes('sitting') || description.includes('sit') || 
+        description.includes('chair') || description.includes('seated'))) {
+      return 'sitting';
+    }
+    
+    return 'idle';
+  };
+
   // Parse scene description to determine character positions
   const getCharacterPositions = () => {
-    const description = sceneDescription.toLowerCase();
+    const description = (sceneDescription || '').toLowerCase();
     
     if (description.includes('face to face') || description.includes('standing')) {
       return {
@@ -110,6 +154,12 @@ const AnimationCanvas = forwardRef(({
         person1: { x: 40, y: 50, facing: 'front' },
         person2: { x: 60, y: 50, facing: 'front' }
       };
+    } else if (description.includes('chasing') || description.includes('running')) {
+      // Running positions - person1 on left, person2 on right
+      return {
+        person1: { x: 25, y: 50, facing: 'right' },
+        person2: { x: 75, y: 50, facing: 'left' }
+      };
     } else {
       // Default positioning
       return {
@@ -120,6 +170,8 @@ const AnimationCanvas = forwardRef(({
   };
 
   const positions = getCharacterPositions();
+  const person1State = getAnimationState('person1');
+  const person2State = getAnimationState('person2');
 
   return (
     <CanvasContainer ref={ref}>
@@ -135,6 +187,8 @@ const AnimationCanvas = forwardRef(({
           facing={positions.person1.facing}
           isActive={currentSpeaker === 'person1'}
           isAnimating={currentSpeaker === 'person1'}
+          features={{}} // person1 has no special features
+          animationState={person1State}
         />
         <StickmanCharacter
           id="person2"
@@ -143,6 +197,8 @@ const AnimationCanvas = forwardRef(({
           facing={positions.person2.facing}
           isActive={currentSpeaker === 'person2'}
           isAnimating={currentSpeaker === 'person2'}
+          features={{ glasses: true }} // person2 has glasses
+          animationState={person2State}
         />
       </CharactersContainer>
 
